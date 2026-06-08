@@ -2,6 +2,7 @@ package com.mcsproject.lms.controller;
 
 import com.mcsproject.lms.entity.User;
 import com.mcsproject.lms.repository.UserRepository;
+import com.mcsproject.lms.repository.BookRepository; // Imported your BookRepository
 
 import jakarta.servlet.http.HttpSession;
 
@@ -19,6 +20,10 @@ public class UserController {
 	@Autowired
 	private UserRepository userRepo;
 
+	// Added injection for BookRepository to calculate real-time inventory metrics
+	@Autowired
+	private BookRepository bookRepo;
+
 	// Login Page
 	@GetMapping("/login")
 	public String loginPage() {
@@ -30,21 +35,59 @@ public class UserController {
 	public String signupPage() {
 		return "signup-page";
 	}
+	
+//	// Dashboard Landing Page Route
+//		@GetMapping("/dashboard")
+//		public String dashboard(HttpSession session, Model model) {
+//
+//			String username = (String) session.getAttribute("loggedInUser");
+//
+//			if (username == null) {
+//				return "redirect:/login"; 
+//			}
+//
+//			// Calculate exact live totals across tables
+//			long totalBooksCount = bookRepo.count();
+//			long totalCategoriesCount = bookRepo.countDistinctCategories();
+//			long totalUsersCount = userRepo.count(); // Fetch total registered user accounts
+//
+//			// Push values to dashboard-page.html template
+//			model.addAttribute("username", username);
+//			model.addAttribute("totalBooks", totalBooksCount);
+//			model.addAttribute("totalCategories", totalCategoriesCount);
+//			model.addAttribute("totalMembers", totalUsersCount); // Add to model
+//
+//			return "dashboard-page";
+//		}
+	
+	// Dashboard Landing Page Route
+		@GetMapping("/dashboard")
+		public String dashboard(HttpSession session, Model model, @RequestHeader(value = "X-Requested-With", required = false) String requestedWith) {
 
-	// Dashboard
-	@GetMapping("/dashboard")
-	public String dashboard(HttpSession session, Model model) {
+			String username = (String) session.getAttribute("loggedInUser");
 
-		String username = (String) session.getAttribute("loggedInUser");
+			if (username == null) {
+				return "redirect:/login"; 
+			}
 
-		if (username == null) {
-			return "redirect:/login"; // protect page
+			// Calculate exact live totals across tables
+			long totalBooksCount = bookRepo.count();
+			long totalCategoriesCount = bookRepo.countDistinctCategories();
+			long totalUsersCount = userRepo.count(); 
+
+			// Push values to dashboard-page.html template
+			model.addAttribute("username", username);
+			model.addAttribute("totalBooks", totalBooksCount);
+			model.addAttribute("totalCategories", totalCategoriesCount);
+			model.addAttribute("totalMembers", totalUsersCount); 
+
+			// IF it's an AJAX background call, return ONLY the inner stats grid fragment!
+			if ("XMLHttpRequest".equals(requestedWith)) {
+				return "dashboard-page :: #dashboard-view-fragment";
+			}
+
+			return "dashboard-page";
 		}
-
-		model.addAttribute("username", username);
-
-		return "dashboard-page";
-	}
 
 	// Process Signup
 	@PostMapping("/signup")
@@ -103,7 +146,7 @@ public class UserController {
 	// Logout
 	@GetMapping("/logout")
     public String logout(HttpSession session) {
-        session.invalidate(); // ✅ clears login
+        session.invalidate(); // clears login context tracking session storage properties
         return "redirect:/login";
     }
 }
