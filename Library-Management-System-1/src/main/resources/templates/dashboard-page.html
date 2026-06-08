@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard</title>
+
+<!-- Bootstrap -->
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+
+<!-- Icons -->
+<link
+	href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+	rel="stylesheet">
+
+<style>
+body {
+	margin: 0;
+	background: #f8f9fc;
+}
+
+/* Sidebar */
+.sidebar {
+	height: 100vh;
+	width: 250px;
+	position: fixed;
+	background: linear-gradient(180deg, #4e73df, #1cc88a);
+	color: white;
+	padding-top: 20px;
+}
+
+.sidebar a {
+	color: white;
+	padding: 12px 20px;
+	display: block;
+	text-decoration: none;
+	transition: 0.3s;
+}
+
+.sidebar a:hover {
+	background: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar .brand {
+	font-size: 20px;
+	font-weight: bold;
+	text-align: center;
+	margin-bottom: 20px;
+}
+
+/* Main Content */
+.main-content {
+	margin-left: 250px;
+}
+
+/* Topbar */
+.topbar {
+	background: white;
+	padding: 10px 20px;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Cards */
+.card-box {
+	border: none;
+	border-radius: 15px;
+}
+</style>
+
+</head>
+
+<body>
+
+	<!-- Sidebar -->
+	<div class="sidebar">
+		<div class="brand">My Dashboard</div>
+
+		<a href="#"><i class="bi bi-speedometer2"></i> Dashboard</a>
+		<a href="#"><i class="bi bi-person"></i> Profile</a> 
+		<a href="/add-book"><i class="bi bi-file-earmark-plus"></i> Add Book</a> 
+		<a href="/list-books"><i class="bi bi-card-list"></i> List Book</a>
+	</div>
+
+	<!-- Main Content -->
+	<div class="main-content">
+
+		<!-- Top Navbar -->
+		<div class="topbar d-flex justify-content-between align-items-center">
+			<h5 class="mb-0">
+				Welcome, <span th:text="${username}"></span>
+			</h5>
+
+			<a href="/logout" class="btn btn-danger btn-sm"> <i
+				class="bi bi-box-arrow-right"></i> Logout
+			</a>
+		</div>
+
+		<!-- Page Content -->
+		<div class="container-fluid mt-4">
+
+			<div class="row g-4">
+
+				<!-- Extra Section -->
+				<div class="row mt-4">
+					<div class="col-12">
+						<div class="card card-box shadow p-4">
+							<h5>Welcome to the Dashboard</h5>
+							<p>This is your main control panel. You can manage users,
+								data, and settings here.</p>
+						</div>
+					</div>
+				</div>
+
+			</div>
+
+		</div>
+</body>
+</html>
