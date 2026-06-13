@@ -129,7 +129,7 @@ body {
 			<span>LMS Portal</span>
 		</div>
 		<a href="javascript:void(0);" id="btn-dashboard" class="active-link"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
-		<a href="#"><i class="bi bi-person-fill"></i> Profile</a> 
+		<a href="javascript:void(0);" class="menu-link" data-url="/profile"><i class="bi bi-person-fill"></i> Profile</a> 
 		<a href="javascript:void(0);" class="menu-link" data-url="/add-book"><i class="bi bi-plus-circle-fill"></i> Add Book</a> 
 		<a href="javascript:void(0);" class="menu-link" data-url="/list-books"><i class="bi bi-collection-fill"></i> List Book</a>
 	</div>
@@ -145,7 +145,6 @@ body {
 		</div>
 
 		<div class="container-fluid p-4" id="content-area">
-			
 			<div id="dashboard-view-fragment">
 				
 				<div class="row mb-4">
@@ -239,7 +238,6 @@ body {
 		const contentArea = document.getElementById('content-area');
 		const sidebarLinks = document.querySelectorAll('.sidebar a');
 
-		// Function to update sidebar active highlight styles state manually
 		function updateSidebarHighlight(targetElement) {
 			sidebarLinks.forEach(link => link.classList.remove('active-link'));
 			if(targetElement) {
@@ -247,8 +245,8 @@ body {
 			}
 		}
 
-		// Function to show custom Toast alerts
-		function showToastNotification(message, isSuccess = true) {
+		// FIXED: Attached directly to window global execution context space
+		window.showToastNotification = function(message, isSuccess = true) {
 			const toastEl = document.getElementById('liveToast');
 			const toastMsg = document.getElementById('toast-message');
 			
@@ -265,21 +263,20 @@ body {
 			bsToast.show();
 		}
 
-		// GLOBAL FUNCTION: Handles confirmations and processes delete asynchronously
 		function confirmDashboardDelete(btn) {
 			let targetBookId = btn.getAttribute("data-id");
 			if (confirm("Are you sure you want to delete this book?")) {
 				fetch("/delete-book/" + targetBookId)
 					.then(response => response.text())
 					.then(data => {
-						showToastNotification("Book deleted successfully 🗑️");
+						window.showToastNotification("Book deleted successfully 🗑️");
 						loadDynamicView("/list-books"); 
 					})
 					.catch(err => console.error(err));
 			}
 		}
 
-		// Function to load fragments asynchronously
+		// FIXED: Added full script tag parsing engine to execute incoming JS blocks perfectly
 		function loadDynamicView(url) {
 			fetch(url, {
 				headers: { "X-Requested-With": "XMLHttpRequest" }
@@ -294,17 +291,27 @@ body {
 				})
 				.then(html => {
 					if (html) {
+						// Insert layout body context text elements
 						contentArea.innerHTML = html;
+						
+						// Scan, unpack, and run script structures manually
+						const inlineScripts = contentArea.querySelectorAll("script");
+						inlineScripts.forEach(oldScript => {
+							const freshScript = document.createElement("script");
+							Array.from(oldScript.attributes).forEach(attr => freshScript.setAttribute(attr.name, attr.value));
+							freshScript.appendChild(document.createTextNode(oldScript.innerHTML));
+							oldScript.parentNode.replaceChild(freshScript, oldScript);
+						});
+
 						attachDynamicListeners();
 					}
 				})
 				.catch(error => {
 					console.error('AJAX Error:', error);
-					contentArea.innerHTML = `<div class="alert alert-danger mt-4">Failed to load content layout. Please try again.</div>`;
+					contentArea.innerHTML = `<div class="alert alert-danger mt-4">Failed to load view layout.</div>`;
 				});
 		}
 
-		// Intercept Sidebar Links Clicks
 		document.querySelectorAll('.menu-link').forEach(link => {
 			link.addEventListener('click', function(e) {
 				e.preventDefault();
@@ -313,16 +320,15 @@ body {
 			});
 		});
 
-		// FIXED: Dashboard side button now pulls live data records asynchronously on every click!
 		document.getElementById('btn-dashboard').addEventListener('click', function() {
 			updateSidebarHighlight(this);
 			loadDynamicView("/dashboard");
 		});
 
-		// Monitor forms and updates injected dynamic data templates
 		function attachDynamicListeners() {
 			const internalForm = contentArea.querySelector('form');
-			if (internalForm) {
+			// Exclude the profile password form from this generic interceptor logic block
+			if (internalForm && internalForm.id !== 'form-change-password') {
 				internalForm.addEventListener('submit', function(e) {
 					e.preventDefault();
 					
@@ -336,10 +342,10 @@ body {
 					.then(response => response.text())
 					.then(data => {
 						if (data.includes("SAVED_SUCCESS")) {
-							showToastNotification("Book added successfully 📚");
+							window.showToastNotification("Book added successfully 📚");
 							this.reset();
 						} else if (data.includes("UPDATED_SUCCESS")) {
-							showToastNotification("Book updated successfully ✅");
+							window.showToastNotification("Book updated successfully ✅");
 							updateSidebarHighlight(document.querySelector('[data-url="/list-books"]'));
 							loadDynamicView("/list-books"); 
 						} else {
@@ -351,7 +357,6 @@ body {
 				});
 			}
 
-			// Monitor Action Table Clicks (Edit links)
 			contentArea.querySelectorAll('a').forEach(anchor => {
 				const linkPath = anchor.getAttribute('href');
 				if (linkPath && linkPath.includes('/edit-book/')) {

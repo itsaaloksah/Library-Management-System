@@ -36,30 +36,6 @@ public class UserController {
 		return "signup-page";
 	}
 	
-//	// Dashboard Landing Page Route
-//		@GetMapping("/dashboard")
-//		public String dashboard(HttpSession session, Model model) {
-//
-//			String username = (String) session.getAttribute("loggedInUser");
-//
-//			if (username == null) {
-//				return "redirect:/login"; 
-//			}
-//
-//			// Calculate exact live totals across tables
-//			long totalBooksCount = bookRepo.count();
-//			long totalCategoriesCount = bookRepo.countDistinctCategories();
-//			long totalUsersCount = userRepo.count(); // Fetch total registered user accounts
-//
-//			// Push values to dashboard-page.html template
-//			model.addAttribute("username", username);
-//			model.addAttribute("totalBooks", totalBooksCount);
-//			model.addAttribute("totalCategories", totalCategoriesCount);
-//			model.addAttribute("totalMembers", totalUsersCount); // Add to model
-//
-//			return "dashboard-page";
-//		}
-	
 	// Dashboard Landing Page Route
 		@GetMapping("/dashboard")
 		public String dashboard(HttpSession session, Model model, @RequestHeader(value = "X-Requested-With", required = false) String requestedWith) {
@@ -149,4 +125,52 @@ public class UserController {
         session.invalidate(); // clears login context tracking session storage properties
         return "redirect:/login";
     }
+	
+	// Render Profile Layout View via AJAX background call
+		@GetMapping("/profile")
+		public String userProfilePage(HttpSession session, Model model) {
+			String username = (String) session.getAttribute("loggedInUser");
+			if (username == null) {
+				return "redirect:/login";
+			}
+
+			// Pull user data down from the repository to extract properties safely
+			Optional<User> currentUser = userRepo.findByUsername(username);
+			if (currentUser.isPresent()) {
+				model.addAttribute("user", currentUser.get());
+			}
+
+			return "profile";
+		}
+
+		// Process Change Password Form Submission Asynchronously
+		@PostMapping("/profile/change-password")
+		@ResponseBody
+		public String changeUserPassword(@RequestParam String currentPassword,
+				                         @RequestParam String newPassword,
+				                         @RequestParam String confirmPassword,
+				                         HttpSession session) {
+			
+			String username = (String) session.getAttribute("loggedInUser");
+			if (username == null) return "UNAUTHORIZED";
+
+			// Match confirmation values
+			if (!newPassword.equals(confirmPassword)) {
+				return "PASSWORD_MATCH_ERROR";
+			}
+
+			User user = userRepo.findByUsername(username).orElse(null);
+			if (user == null) return "USER_NOT_FOUND";
+
+			// Direct raw string match check corresponding to your user login process
+			if (!user.getPassword().equals(currentPassword)) {
+				return "INVALID_CURRENT_PASSWORD";
+			}
+
+			// Update fields and commit database transactions
+			user.setPassword(newPassword);
+			userRepo.save(user);
+
+			return "PASSWORD_UPDATE_SUCCESS";
+		}
 }
