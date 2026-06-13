@@ -128,7 +128,7 @@ body {
 			<i class="bi bi-book-half text-warning"></i>
 			<span>LMS Portal</span>
 		</div>
-		<a href="javascript:void(0);" id="btn-dashboard" class="active-link"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+		<a href="javascript:void(0);" id="btn-dashboard" data-url="/dashboard" class="active-link"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
 		<a href="javascript:void(0);" class="menu-link" data-url="/profile"><i class="bi bi-person-fill"></i> Profile</a> 
 		<a href="javascript:void(0);" class="menu-link" data-url="/add-book"><i class="bi bi-plus-circle-fill"></i> Add Book</a> 
 		<a href="javascript:void(0);" class="menu-link" data-url="/list-books"><i class="bi bi-collection-fill"></i> List Book</a>
@@ -238,14 +238,16 @@ body {
 		const contentArea = document.getElementById('content-area');
 		const sidebarLinks = document.querySelectorAll('.sidebar a');
 
-		function updateSidebarHighlight(targetElement) {
-			sidebarLinks.forEach(link => link.classList.remove('active-link'));
-			if(targetElement) {
-				targetElement.classList.add('active-link');
-			}
+		function updateSidebarHighlight(targetUrl) {
+			sidebarLinks.forEach(link => {
+				if (link.getAttribute('data-url') === targetUrl) {
+					link.classList.add('active-link');
+				} else {
+					link.classList.remove('active-link');
+				}
+			});
 		}
 
-		// FIXED: Attached directly to window global execution context space
 		window.showToastNotification = function(message, isSuccess = true) {
 			const toastEl = document.getElementById('liveToast');
 			const toastMsg = document.getElementById('toast-message');
@@ -270,14 +272,14 @@ body {
 					.then(response => response.text())
 					.then(data => {
 						window.showToastNotification("Book deleted successfully 🗑️");
-						loadDynamicView("/list-books"); 
+						loadDynamicView("/list-books", false); 
 					})
 					.catch(err => console.error(err));
 			}
 		}
 
-		// FIXED: Added full script tag parsing engine to execute incoming JS blocks perfectly
-		function loadDynamicView(url) {
+		// UPDATED: Now accepts an optional boolean to push history states to the URL bar
+		function loadDynamicView(url, shouldPushState = true) {
 			fetch(url, {
 				headers: { "X-Requested-With": "XMLHttpRequest" }
 			})
@@ -291,10 +293,9 @@ body {
 				})
 				.then(html => {
 					if (html) {
-						// Insert layout body context text elements
 						contentArea.innerHTML = html;
 						
-						// Scan, unpack, and run script structures manually
+						// Manually execute script tags inside fragments
 						const inlineScripts = contentArea.querySelectorAll("script");
 						inlineScripts.forEach(oldScript => {
 							const freshScript = document.createElement("script");
@@ -302,6 +303,14 @@ body {
 							freshScript.appendChild(document.createTextNode(oldScript.innerHTML));
 							oldScript.parentNode.replaceChild(freshScript, oldScript);
 						});
+
+						// Update sidebar highlights to match the current URL
+						updateSidebarHighlight(url);
+
+						// UPDATED: Push the actual fragment URL route straight to the browser address bar
+						if (shouldPushState) {
+							window.history.pushState({ pathUrl: url }, '', url);
+						}
 
 						attachDynamicListeners();
 					}
@@ -312,22 +321,34 @@ body {
 				});
 		}
 
+		// Handle sidebar menu items navigation clicks
 		document.querySelectorAll('.menu-link').forEach(link => {
 			link.addEventListener('click', function(e) {
 				e.preventDefault();
-				updateSidebarHighlight(this);
 				loadDynamicView(this.getAttribute('data-url'));
 			});
 		});
 
-		document.getElementById('btn-dashboard').addEventListener('click', function() {
-			updateSidebarHighlight(this);
-			loadDynamicView("/dashboard");
+		// Dashboard tab navigation click handler
+		document.getElementById('btn-dashboard').addEventListener('click', function(e) {
+			e.preventDefault();
+			loadDynamicView(this.getAttribute('data-url'));
 		});
+
+		// ADDED: Handles the native browser back and forward button clicks perfectly
+		window.addEventListener('popstate', function(event) {
+			if (event.state && event.state.pathUrl) {
+				loadDynamicView(event.state.pathUrl, false); // false tells it not to create an infinite history loop
+			} else {
+				loadDynamicView("/dashboard", false);
+			}
+		});
+
+		// Initialization logic to save the initial state on startup
+		window.history.replaceState({ pathUrl: window.location.pathname }, '', window.location.pathname);
 
 		function attachDynamicListeners() {
 			const internalForm = contentArea.querySelector('form');
-			// Exclude the profile password form from this generic interceptor logic block
 			if (internalForm && internalForm.id !== 'form-change-password') {
 				internalForm.addEventListener('submit', function(e) {
 					e.preventDefault();
@@ -346,7 +367,6 @@ body {
 							this.reset();
 						} else if (data.includes("UPDATED_SUCCESS")) {
 							window.showToastNotification("Book updated successfully ✅");
-							updateSidebarHighlight(document.querySelector('[data-url="/list-books"]'));
 							loadDynamicView("/list-books"); 
 						} else {
 							contentArea.innerHTML = data;
